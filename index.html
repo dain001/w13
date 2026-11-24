@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>THE DEAL — INTERACTIVE FILE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Unbounded:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root{--bk:#0b0b0b;--g1:#1a1a1a;--g2:#8d8d8d;--wh:#e9e6df;--rd:#E3241B;--rd2:#9e1410;
+    --mono:"Space Mono","Courier New",ui-monospace,monospace;--disp:"Unbounded","Arial Black","Apple SD Gothic Neo",sans-serif;--kr:"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bk);color:var(--wh);font-family:var(--kr);user-select:none}
+  .mono{font-family:var(--mono)}
+  /* ---- 노이즈 · 스캔라인 ---- */
+  body::after{content:"";position:fixed;inset:-50%;z-index:20;pointer-events:none;opacity:.22;mix-blend-mode:screen;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation:grain .6s steps(4) infinite}
+  @keyframes grain{25%{transform:translate(-3%,2%)}50%{transform:translate(2%,-3%)}75%{transform:translate(-2%,-1%)}}
+  body::before{content:"";position:fixed;inset:0;z-index:19;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px)}
+  #scene{position:fixed;inset:0;overflow:hidden}
+  /* ---- 배경: 흑백 하프톤 + 빨간 HUD ---- */
+  #bg{position:absolute;inset:0;transition:filter 1s, opacity 1s;background:#111;filter:grayscale(1) contrast(1.25)}
+  #bg::before{content:"";position:absolute;inset:0;background:radial-gradient(circle,rgba(255,255,255,.13) 1px,transparent 1.6px) 0 0/5px 5px;mix-blend-mode:overlay}
+  #bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,transparent 45%,rgba(0,0,0,.6))}
+  #bg svg.sky{position:absolute;left:0;right:0;bottom:0;width:100%;height:62%}
+  #bg.bg-under{background:linear-gradient(#5a5a5a,#1c1c1c)}
+  #bg.bg-elite{background:linear-gradient(#d2cfc8,#7a7873)}
+  #bg.bg-office{background:linear-gradient(#aaa7a1,#4a4946)}
+  #bg.bg-check{background:linear-gradient(#8a8a8a,#2a2a2a)}
+  #bg.bg-workshop{background:radial-gradient(circle at 50% 65%,#8d8d8d,#161616 55%)}
+  #bg.bg-green{background:linear-gradient(#9d9d9d,#363636)}
+  #bg.bg-admin{background:linear-gradient(#7d7d7d,#2c2c2c)}
+  #bg.bg-plant{background:linear-gradient(#6b6b6b,#1f1f1f)}
+  #bg.bg-dark{background:#050505}
+  #bg.bg-plaza{background:linear-gradient(#a9a6a0,#2b2b2b)}
+  #hudlayer{position:absolute;inset:0;pointer-events:none;transition:opacity .8s}
+  #hudlayer.faint{opacity:.3}
+  #hudlayer svg{width:100%;height:100%}
+  #locTag{position:absolute;top:58px;left:22px;font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--bk);background:var(--rd);padding:4px 10px;transition:opacity .6s;text-transform:uppercase}
+  #locTag::before{content:"◢ LOC // ";opacity:.75}
+  /* ---- 인물: 하프톤 실루엣 ---- */
+  .ch{position:absolute;bottom:0;width:min(34vw,360px);height:74vh;transition:opacity .35s, transform .35s;opacity:0;pointer-events:none}
+  #chL{left:3vw}#chR{right:3vw}
+  .ch.on{opacity:1}.ch.dim{opacity:.28;transform:scale(.97)}
+  .ch svg{width:100%;height:100%}
+  .ch .tag{position:absolute;top:24%;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:12px;background:var(--rd);color:var(--bk);padding:3px 10px;white-space:nowrap;font-weight:700}
+  .ch .tag small{display:block;font-size:9px;font-weight:400;letter-spacing:.1em}
+  /* ---- 대화창 ---- */
+  #box{position:absolute;left:50%;bottom:3vh;transform:translateX(-50%);width:min(900px,94vw);min-height:158px;background:rgba(8,8,8,.93);border:1px solid #3a3a3a;padding:0 0 30px;cursor:pointer;transition:opacity .25s}
+  #box::before{content:"";position:absolute;right:-1px;top:-1px;width:14px;height:14px;border-top:3px solid var(--rd);border-right:3px solid var(--rd)}
+  #box.hide{opacity:0;pointer-events:none}
+  #name{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--bk);background:var(--rd);display:inline-block;padding:4px 12px;min-height:22px;margin-bottom:12px}
+  #name:empty{background:#2a2a2a}
+  #name:empty::before{content:"NARRATION //";color:#777}
+  #text{font-size:20px;line-height:1.75;min-height:68px;padding:0 26px}
+  #text::after{content:"█";color:var(--rd);animation:blink 1s steps(1) infinite;margin-left:3px;font-size:16px}
+  #text.narr{color:#cfcbc4}#text.inner{color:#9c978f;font-style:italic}
+  #hint{position:absolute;right:16px;bottom:8px;font-family:var(--mono);font-size:11px;color:#666}
+  @keyframes blink{50%{opacity:0}}
+  /* ---- 오버레이 ---- */
+  #overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;z-index:4}
+  #overlay.on{display:flex}
+  .shade{background:rgba(0,0,0,.78)}
+  .panel{background:rgba(8,8,8,.95);border:1px solid #3a3a3a;padding:18px 22px;max-width:min(760px,92vw)}
+  .ptitle{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--bk);background:var(--rd);padding:4px 12px;margin-bottom:12px;letter-spacing:.06em}
+  .help{font-family:var(--mono);font-size:12px;color:var(--g2);margin:10px 0;letter-spacing:.02em}
+  .btn{background:var(--rd);color:var(--bk);border:none;padding:11px 22px;font-size:14px;cursor:pointer;margin:10px 6px 0 0;font-family:var(--mono);font-weight:700;letter-spacing:.06em}
+  .btn:hover:not(:disabled){background:var(--wh)}
+  .btn.ghost{background:transparent;color:var(--wh);border:1px solid #666}
+  .btn:disabled{opacity:.3;cursor:not-allowed}
+  .timer{height:5px;background:var(--rd);transform-origin:left;margin-top:12px}
+  /* 선택지: 터미널 */
+  .choices{width:min(760px,92vw);background:rgba(8,8,8,.97);border:1px solid #3a3a3a;padding:0 0 14px}
+  .prompt{font-family:var(--mono);font-size:13px;color:var(--bk);background:var(--rd);padding:6px 14px;margin-bottom:8px;font-weight:700}
+  .prompt::before{content:"> DECISION REQUIRED // ";opacity:.7}
+  .opt{display:flex;gap:14px;width:calc(100% - 28px);margin:6px 14px;text-align:left;background:transparent;color:var(--wh);border:1px solid #333;padding:13px 16px;font-size:17px;cursor:pointer;font-family:var(--kr);transition:.12s;align-items:baseline}
+  .opt .no{font-family:var(--mono);color:var(--rd);font-size:13px;font-weight:700;min-width:28px}
+  .opt:hover:not(:disabled){background:var(--rd);color:var(--bk);border-color:var(--rd)}
+  .opt:hover:not(:disabled) .no{color:var(--bk)}
+  .opt:disabled{opacity:.35;cursor:not-allowed;text-decoration:line-through;text-decoration-color:var(--rd)}
+  .opt .lock{display:block;font-family:var(--mono);font-size:11px;color:var(--rd);margin-top:3px;text-decoration:none}
+  /* 문서 */
+  .paper{background:#d9d5cc;color:#111;font-family:var(--mono);padding:26px 30px;width:min(620px,92vw);box-shadow:0 12px 40px rgba(0,0,0,.7);line-height:1.95;font-size:14px;position:relative;filter:contrast(1.1)}
+  .paper::before{content:"";position:absolute;inset:0;background:radial-gradient(circle,rgba(0,0,0,.08) 1px,transparent 1.5px) 0 0/4px 4px;pointer-events:none}
+  .paper h4{margin:0 0 10px;font-size:13px;background:#111;color:var(--wh);display:inline-block;padding:2px 8px}
+  .paper .stamp{position:absolute;right:22px;bottom:18px;border:3px solid var(--rd);color:var(--rd);padding:3px 10px;transform:rotate(-10deg);font-weight:700;font-family:var(--disp)}
+  .key{background:#111;color:#111;cursor:pointer;padding:0 3px;transition:.2s}
+  .key:hover{color:#777}
+  .key.found{background:var(--rd);color:var(--bk)}
+  /* 엿듣기 */
+  .door{width:min(320px,70vw);height:min(440px,56vh);background:repeating-linear-gradient(0deg,#262626 0 2px,#1d1d1d 2px 4px);border:2px solid var(--rd);position:relative;cursor:crosshair;touch-action:none}
+  .door::before{content:"DOOR_07 // ACOUSTIC SCAN";position:absolute;top:-22px;left:-2px;font-family:var(--mono);font-size:11px;background:var(--rd);color:var(--bk);padding:2px 8px;font-weight:700}
+  .door::after{content:"";position:absolute;inset:24px;border:1px dashed #555;background:linear-gradient(var(--rd),var(--rd)) 50% 0/1px 100% no-repeat,linear-gradient(var(--rd),var(--rd)) 0 50%/100% 1px no-repeat;opacity:.35}
+  .door .knob{position:absolute;right:22px;top:52%;width:14px;height:14px;border:2px solid var(--rd)}
+  .door .ear{position:absolute;width:56px;height:56px;border:2px solid var(--rd);transform:translate(-50%,-50%);pointer-events:none;display:none;z-index:2}
+  .door .ear::after{content:"";position:absolute;inset:22px;background:var(--rd)}
+  .muffle{width:min(760px,92vw);text-align:center;font-size:21px;min-height:70px;margin-bottom:28px;transition:filter .1s}
+  .meter{width:240px;height:8px;border:1px solid var(--rd);margin:12px auto 0}.meter i{display:block;height:100%;background:var(--rd);width:0}
+  /* 수색: 도면 */
+  .room{position:relative;width:min(780px,94vw);height:min(420px,56vh);background:linear-gradient(#222 1px,transparent 1px) 0 0/30px 30px,linear-gradient(90deg,#222 1px,transparent 1px) 0 0/30px 30px,#0e0e0e;border:2px solid var(--rd)}
+  .obj{position:absolute;background:transparent;color:var(--wh);border:1px solid var(--wh);font-size:14px;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;cursor:pointer;transition:.12s;padding:4px}
+  .obj::before{content:attr(data-code);font-family:var(--mono);font-size:10px;color:var(--rd);position:absolute;top:3px;left:5px}
+  .obj:hover{background:var(--rd);color:var(--bk);border-color:var(--rd)}
+  .obj.done{opacity:.35;border-style:dashed}
+  .room .msg{position:absolute;left:0;right:0;bottom:-40px;text-align:center;font-size:15px;font-family:var(--mono);color:var(--wh)}
+  .keypad input{font-size:26px;width:150px;text-align:center;letter-spacing:.4em;background:#000;color:var(--rd);border:1px solid var(--rd);padding:6px;font-family:var(--mono)}
+  /* 지도 */
+  .map{position:relative;width:min(720px,94vw);height:min(460px,58vh);background:linear-gradient(#1f1f1f 1px,transparent 1px) 0 0/24px 24px,linear-gradient(90deg,#1f1f1f 1px,transparent 1px) 0 0/24px 24px,#0c0c0c;border:2px solid #444}
+  .zone{position:absolute;border:1px solid #555;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:15px;color:#777;font-family:var(--kr)}
+  .zone small{font-family:var(--mono);font-size:10px;color:#666;margin-top:3px}
+  .zone.pick{cursor:pointer;border:2px solid var(--wh);color:var(--wh)}
+  .zone.pick:hover{background:var(--rd);color:var(--bk);border-color:var(--rd)}
+  .zone.pick:hover small{color:var(--bk)}
+  .zone.you{border-color:var(--rd);color:var(--rd)}
+  .zone.lockz{background:repeating-linear-gradient(45deg,#1a1a1a 0 6px,#111 6px 12px)}
+  /* 배전반 */
+  .board{position:relative;width:min(760px,94vw);height:min(430px,58vh);background:linear-gradient(#262626 1px,transparent 1px) 0 0/20px 20px,linear-gradient(90deg,#262626 1px,transparent 1px) 0 0/20px 20px,#161616;border:2px solid var(--rd);touch-action:none}
+  .dark{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle 120px at var(--x,50%) var(--y,50%),transparent 0,rgba(0,0,0,.97) 140px)}
+  .plug{position:absolute;width:74px;height:74px;background:var(--rd);color:var(--bk);left:40px;top:calc(50% - 37px);cursor:grab;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:700;text-align:center;z-index:2}
+  .sock{position:absolute;right:40px;width:210px;height:72px;border:2px solid var(--wh);display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:15px;text-align:center}
+  .sock small{font-family:var(--mono);font-size:10px}
+  .sock.locked{border:2px dashed #444;color:#555}
+  .sock.hot{background:var(--rd);color:var(--bk);border-color:var(--rd)}
+  svg.cable{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  /* 카드 (포스터) */
+  .card{position:relative;width:min(1000px,94vw);padding:30px 0}
+  .card .vert{position:absolute;left:-6px;top:24px;writing-mode:vertical-rl;transform:rotate(180deg);font-family:var(--disp);font-weight:900;font-size:22px;color:var(--rd)}
+  .card .t{font-family:var(--disp);font-weight:900;font-size:clamp(46px,9.5vw,118px);line-height:.92;color:var(--rd);letter-spacing:-.02em;margin-left:40px;text-transform:uppercase}
+  .card .k{font-size:22px;color:var(--wh);margin:18px 0 0 44px}
+  .card .data{font-family:var(--mono);font-size:12px;color:var(--g2);margin:22px 0 0 44px;line-height:1.7;border-top:1px dashed #444;padding-top:12px}
+  .card .bar{background:var(--rd);color:var(--bk);font-family:var(--mono);font-weight:700;font-size:13px;padding:6px 12px;margin:22px 0 0 44px;display:inline-block}
+  .xhair{display:inline-block;width:26px;height:26px;position:relative;vertical-align:middle;margin:0 10px}
+  .xhair::before,.xhair::after{content:"";position:absolute;background:var(--rd)}
+  .xhair::before{left:12px;top:0;width:3px;height:100%}.xhair::after{top:12px;left:0;height:3px;width:100%}
+  /* 엔딩 */
+  .endwrap{position:absolute;inset:0;overflow:auto;background:#090909;z-index:6;padding:56px 22px}
+  .end{max-width:820px;margin:0 auto;position:relative}
+  .end .code{font-family:var(--disp);font-weight:900;font-size:clamp(46px,10vw,112px);line-height:.9;color:var(--rd);text-transform:uppercase;letter-spacing:-.02em}
+  .end .sub{font-family:var(--mono);font-size:14px;color:var(--bk);background:var(--rd);display:inline-block;padding:4px 12px;margin:14px 0 26px;font-weight:700}
+  .end p{line-height:1.9;font-size:17px}
+  .gl{display:grid;grid-template-columns:110px 1fr;gap:0;border:1px solid #3a3a3a;margin:24px 0;font-size:15px}
+  .gl b{font-family:var(--mono);font-size:12px;color:var(--bk);background:var(--rd);font-weight:700;padding:10px}
+  .gl span{padding:10px 14px;border-bottom:1px solid #222}
+  .q{font-size:22px;font-weight:700;margin:26px 0;border-left:6px solid var(--rd);padding-left:14px}
+  .ledger{font-family:var(--mono);font-size:13px;color:#c9c5bd;line-height:2}
+  .rels{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 24px}
+  .rel{border:1px solid #444;padding:6px 12px;font-size:14px}.rel b{color:var(--rd);font-family:var(--mono);font-size:12px;margin-left:6px}
+  .sec{font-family:var(--mono);color:var(--rd);font-size:12px;letter-spacing:.12em;margin-top:28px;border-top:1px dashed #444;padding-top:10px}
+  /* HUD */
+  #hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:12px 18px;font-family:var(--mono);font-size:12px;color:var(--g2);z-index:7;background:linear-gradient(rgba(0,0,0,.85),transparent)}
+  #day{color:var(--wh);font-weight:700}
+  #hud button{background:none;border:1px solid #444;color:var(--g2);padding:3px 10px;cursor:pointer;margin-left:6px;font-size:11px;font-family:var(--mono)}
+  #hud button:hover{border-color:var(--rd);color:var(--rd)}
+  #doc{border:1px solid #444;padding:3px 9px}#doc.on{border-color:var(--rd);background:var(--rd);color:var(--bk);font-weight:700}
+  #notices{position:fixed;top:52px;right:18px;z-index:8;display:flex;flex-direction:column;gap:5px;align-items:flex-end;pointer-events:none}
+  .notice{background:var(--rd);color:var(--bk);padding:7px 12px;font-size:14px;font-weight:700;animation:nin .3s ease, nout .6s ease 3.6s forwards}
+  .notice::before{content:"▲ MEMORY // ";font-family:var(--mono);font-size:11px}
+  @keyframes nin{from{opacity:0;transform:translateX(14px)}to{opacity:1}}
+  @keyframes nout{to{opacity:0}}
+  #logPanel{position:fixed;inset:60px 10vw 10vh;background:rgba(6,6,6,.98);border:1px solid var(--rd);z-index:9;display:none;overflow:auto;padding:20px 26px;font-size:15px;line-height:1.8}
+  #logPanel .who{font-family:var(--mono);color:var(--bk);background:var(--rd);font-size:11px;padding:1px 6px;margin-right:8px}
+  #dbg{position:fixed;bottom:8px;left:10px;background:#000;border:1px solid #333;padding:8px;font-size:11px;color:#aaa;white-space:pre;display:none;z-index:9;max-height:60vh;overflow:auto}
+  .fade{animation:fadein .45s ease}@keyframes fadein{from{opacity:0}to{opacity:1}}
+  .shake{animation:shake .4s}@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  .glitch{animation:glitch .35s steps(2)}@keyframes glitch{0%{clip-path:inset(20% 0 50% 0);transform:translateX(-8px)}50%{clip-path:inset(60% 0 10% 0);transform:translateX(8px)}100%{clip-path:none;transform:none}}
+</style>
+</head>
+<body>
+<div id="scene">
+  <div id="bg"></div>
+  <div id="hudlayer"></div>
+  <div class="ch" id="chL"></div><div class="ch" id="chR"></div>
+  <div id="locTag"></div>
+  <div id="overlay"></div>
+  <div id="box" class="hide"><div id="name"></div><div id="text"></div><div id="hint">CLICK / SPACE ▶</div></div>
+</div>
+<div id="hud"><span id="day"></span><span><span id="doc">NO FILE</span><button id="fileBtn">FILE · 인물</button><button id="logBtn">LOG</button><button id="dbgBtn">STATE</button></span></div>
+<div id="notices"></div>
+<div id="logPanel"></div>
+<pre id="dbg"></pre>
+<script>
+const ROLE = { gwan: '과장', ban: '반장', yeong: '영감', wiwon: '위원' };
+const REL_WORD = { '-2': '적대', '-1': '경계', '0': '중립', '1': '신뢰', '2': '깊은 신뢰' };
+let s;   // 상태
+function fresh() {
+  return { rel: { gwan: 0, ban: 0, yeong: 0, wiwon: 0 }, doc: 'none', report: false, susp: 0, amb: 0,
+    ledger: [], fed: 1, ticketGone: false, copyAtYeong: false, told: false, hidden: false, deal: null, medicine: false,
+    secretDeal: false, meetFirst: null, confirmed: false, lie: false, lure: false, strike: false, thirdWay: false,
+    saved: false, critical: false, war: false, debt: null, offerPact: false, lieExposed: false, notices: [], day: 0 };
+}
+const hasOrig = () => s.doc === 'orig' || s.doc === 'both';
+const hasCopy = () => s.doc === 'copy' || s.doc === 'both';
+const hasDoc = () => s.doc !== 'none';
+function rel(k, d, silent) {
+  const before = s.rel[k];
+  s.rel[k] = Math.max(-2, Math.min(2, s.rel[k] + d));
+  if (!silent && s.rel[k] !== before) note(`${ROLE[k]}은 이것을 기억할 것이다.`);
+}
+function note(t) { s.notices.push(t); }
+function led(t) { s.ledger.push(t); }
+
+/* ---------------- 대사 표기 ----------------
+   ['n', 텍스트]  내레이션 · ['i', 텍스트] 속마음 · ['doc', 텍스트] 문서 · ['loc', 장소] · [직책, 대사] */
+const SCENES = {
+/* ======================= PROLOGUE ======================= */
+pro: { card: [0, 'PROLOGUE', '성벽 안의 마지막 도시'], next: 'pro0' },
+pro0: { lines: () => [], mini: { type: 'slides' }, next: 'pr1' },
+pr1: {
+  lines: () => [
+    ['loc', '7년 전 · 성문 밖'],
+    ['n', '마지막 전쟁이 끝나갈 무렵, 피난민들이 성문 앞으로 몰려들었다.'],
+    ['n', '성문은 엘리트의 명령으로 닫혔다. 명단에 없는 사람은 들어갈 수 없었다.'],
+    ['i', '그날 부모님을 잃었다. 나는 열두 살이었고, 등에는 다섯 살 동생이 업혀 있었다.'],
+    ['n', '하수로 철창 틈으로 기어 들어가던 밤. 손전등 하나가 우리를 비췄다.'],
+    ['영감', '쉿. 소리 내면 둘 다 끌려나간다. …따라와라.'],
+    ['i', '그게 영감이었다. 성벽 아래 하수로를 고치던 늙은 정비공.'],
+    ['i', '피 한 방울 안 섞인 우리 남매를, 그날부터 키웠다.'],
+  ],
+  next: 'pr2',
+},
+pr2: {
+  lines: () => [
+    ['loc', '지하 구역 · 영감의 작업장 · 3년 전'],
+    ['영감', '내 다리로는 이제 위층 계단을 못 오른다.'],
+    ['n', '영감이 낡은 통행패를 내민다. 엘리트 구역 출입 표식.'],
+    ['영감', '위쪽 사람들한테도 기록에 남기면 안 되는 말이 있지. 그런 말을 나르는 게 "우편"이다.'],
+    ['영감', '우린 명단에 없는 사람들이라, 일이 틀어져도 지우기 쉽거든. 그래서 위에서 우리를 쓴다.'],
+    ['영감', '규칙은 셋. 읽지 않는다. 묻지 않는다. 기억하지 않는다.'],
+  ],
+  choice: { prompt: '통행패를 받아 드는 나는—', opts: () => [
+    { t: '동생을 먹여 살리려면 이 일밖에 없다.', fx: () => { rel('yeong', 1, true); }, after: [['영감', '…그래. 그거면 됐다.']] },
+    { t: '성벽 위쪽이 어떤 곳인지, 내 눈으로 보고 싶다.', fx: () => { s.amb++; }, after: [['영감', '보는 건 좋다. 대신 위에 물들지는 마라.']] },
+  ] },
+  after: () => [['i', '그렇게 나는 전달자가 되었다. 네 계급 사이를 오가는, 유일한 하위계층.']],
+  next: 'pr3',
+},
+pr3: {
+  lines: () => [
+    ['loc', '배급국 → 위원실 · 한 달 전'],
+    ['n', '한 달 전, 봉인된 장부를 배급국에서 위원실로 나르던 날.'],
+    ['n', '비를 맞아 봉투 모서리가 찢어져 있었다.'],
+    ['i', '읽지 않는다. 규칙이다. …그런데 숫자 하나가 눈에 들어왔다.'],
+    ['doc', '[중앙 창고 비축 현황]\n식량 — 적정\n에너지 — 적정'],
+    ['n', '그다음 주, 지하 구역의 배급이 줄었다. 공지문에는 "생산 차질".'],
+    ['i', '창고가 적정이라면, 왜 우리 몫만 줄어드는 걸까.'],
+    ['i', '그 질문이 한 달째 머릿속을 떠나지 않는다.'],
+  ],
+  next: 'd1',
+},
+/* ======================= DAY 1 ======================= */
+d1: { card: [1, 'THE DISCOVERY', '비밀을 발견하다'], next: 'd1s1' },
+d1s1: {
+  lines: () => [
+    ['loc', '지하 구역 · 배급 창구'],
+    ['n', '줄이 짧아졌다. 사람이 줄어든 게 아니라, 배급이 줄었다.'],
+    ['doc', '[공지] 생산 차질로 하위구역 배급을 추가 조정합니다.'],
+    ['동생', '…오늘도 반 개야?'],
+    ['i', '동생은 이제 열두 살. 성문 앞에서 살아남은, 나의 유일한 가족이다.'],
+    ['n', '동생이 기침을 삼킨다. 열은 사흘째 내리지 않는다.'],
+    ['영감', '약은 위쪽에나 있지. 여기선 버티는 수밖에.'],
+    ['영감', '오늘 우편이다. 엘리트 구역, 위원실. 규칙 기억하지?'],
+    ['전달자', '읽지 않는다. 묻지 않는다. 기억하지 않는다.'],
+  ],
+  choice: { prompt: '손에 남은 마지막 배급. 어떻게 할까?', opts: () => [
+    { t: '동생에게 전부 준다.', fx: () => { s.fed = 2; note('동생이 조금 웃었다.'); },
+      after: [['i', '빈속이다. 하지만 오늘은 버틸 수 있다.']] },
+    { t: '반씩 나눠 먹는다.', fx: () => { s.fed = 1; }, after: [['동생', '…같이 먹으니까 좋다.']] },
+    { t: '내 몫은 아이들 몫으로 영감에게 맡긴다.', fx: () => { s.fed = 0; rel('yeong', 1); },
+      after: [['영감', '…너도 먹어야 일을 하지.'], ['n', '영감은 받은 몫을 가장 어린 아이에게 건넸다.']] },
+  ] },
+  next: 'd1s2',
+},
+d1s2: {
+  lines: () => [
+    ['loc', '엘리트 구역 · 위원실 앞 복도'],
+    ['n', '이곳은 공기부터 다르다. 불이 꺼지지 않는 복도.'],
+    ['n', '서신을 기다리는데, 문 너머로 목소리가 새어 나온다.'],
+  ],
+  mini: { type: 'eavesdrop', lines: [
+    ['목소리', '하위구역 추가 삭감은 다음 주부터.'],
+    ['목소리', '공지는 계속 "생산 차질"로. 계획이라는 걸 알면 아래가 뒤집힙니다.'],
+    ['위원', '도시를 지키려면 누군가는 덜 먹어야 해요. 그게 계산입니다.'],
+  ] },
+  after: () => [
+    ['i', '장부의 "적정"이 떠오른다. 부족한 게 아니었다. 줄이고 있었던 거다.'],
+    ['i', '하지만 하위계층 전달자가 들었다는 말을 누가 믿을까. 증거가 필요하다.'],
+    ['n', '회의가 끝나고 사람들이 빠져나간다. 비서실이 잠시 빈다.'],
+    ['i', '규칙을 어기면, 다시는 이 계단을 오르지 못한다. 하지만 동생은—'],
+  ],
+  next: 'd1search',
+},
+d1search: {
+  lines: () => [['loc', '엘리트 구역 · 위원 비서실'], ['i', '경비가 돌아오기 전에.']],
+  mini: { type: 'search' },
+  next: 'd1exam',
+},
+d1exam: {
+  lines: () => [['loc', '엘리트 구역 · 계단 아래'], ['n', '숨을 고르고, 훔친 종이를 펼친다.']],
+  mini: { type: 'examine' },
+  after: () => [['i', '이 종이 한 장. 이게 내 손에 있다는 걸 아는 사람은 아직 없다.']],
+  next: 'd1s3',
+},
+d1s3: {
+  lines: () => [
+    ['loc', '엘리트 구역 · 출구 검문소'],
+    ['보안대장', '가방.'],
+    ...(s.susp ? [['보안대장', '위원실 비서실에 꽤 오래 있었다던데.']] : []),
+    ['전달자', '위원님 직송 서신입니다. 열어보시면… 누가 책임지죠?'],
+    ['보안대장', '전달자 주제에 말이 많군.'],
+  ],
+  choice: { prompt: '보안대장의 눈이 가방에 머문다.', timer: 10, def: 0, opts: () => [
+    { t: '기밀 관행만으로 버틴다.', fx: () => { s.susp++; note('보안대장이 당신의 얼굴을 기억했다.'); }, after: [['보안대장', '…가. 다음엔 열어본다.']] },
+    { t: '미끼를 던진다. "발전소에서 파업 이야기가 돌던데요."', fx: () => { s.lure = true; note('보안대장의 눈이 발전소 쪽으로 향했다.'); led('DAY 1 — 검문을 빠져나가려고 발전소의 파업 소문을 흘렸다.'); },
+      after: [['보안대장', '…파업?'], ['n', '그는 무전기를 들었다. 당신은 더 이상 그의 관심 밖이다.']] },
+    { t: '배달료로 받은 배급표를 내민다.', fx: () => { s.ticketGone = true; s.fed = Math.max(0, s.fed - 1); note('내일 먹을 것이 없다.'); },
+      after: [['보안대장', '…요즘은 이것도 귀하지.'], ['n', '그는 배급표를 주머니에 넣고 손을 내저었다.']] },
+  ] },
+  next: 'd1s4',
+},
+d1s4: {
+  lines: () => [
+    ['loc', '지하 구역 · 영감의 작업장 · 밤'],
+    ['n', '촛불 아래 문서를 펼친다. 손이 떨린다.'],
+    ['i', '이 종이 한 장이 도시를 뒤집을 수 있다. 그리고 나를 죽일 수도 있다.'],
+    ['영감', '얼굴이 왜 그래. 위에서 무슨 일 있었냐.'],
+  ],
+  choice: { prompt: '이 문서를 어떻게 지킬까?', opts: () => [
+    { t: '원본만 몸에 지닌다. 아무도 끌어들이지 않는다.', fx: () => {}, after: [['전달자', '아무 일도 없었어요.'], ['영감', '…그래.']] },
+    { t: '사본을 만들어 영감에게 맡기고, 사실대로 말한다.', fx: () => { s.doc = 'both'; s.copyAtYeong = true; s.told = true; rel('yeong', 1); },
+      after: [['영감', '…우리가 처음부터 빠져 있었다고.'], ['영감', '이건 내가 지키마. 대신 너도 살아서 돌아와.']] },
+    { t: '사본을 "물건"이라고만 하고 맡긴다.', fx: () => { s.doc = 'both'; s.copyAtYeong = true; s.hidden = true; },
+      after: [['영감', '묻지 않으마. 네가 말할 때까지는.']] },
+  ] },
+  next: 'd2',
+},
+/* ======================= DAY 2 ======================= */
+d2: { card: [2, 'THE OFFER', '비밀을 거래할 것인가?'], next: 'd2s1' },
+d2s1: {
+  lines: () => [
+    ['loc', '지하 구역 · 새벽'],
+    ['n', '군홧발 소리. 보안대가 골목마다 문을 연다.'],
+    ...(s.susp >= 2 ? [['n', '문이 두드려진다. 보안대장이 직접 왔다.'], ['보안대장', '또 보는군. 어제 위원실에서 뭔가 없어졌다.'], ['전달자', '저는 서신만 날랐어요.'], ['보안대장', '그렇겠지. 오늘까지는.']]
+      : [['n', '보안대는 골목 끝에서 돌아섰다. 아직은.']]),
+    ...(s.fed === 0 || s.ticketGone ? [['동생', '…배고파.'], ['n', '동생의 기침이 깊어졌다.']] : []),
+    ['i', '쫓기기 전에, 먼저 테이블을 만들어야 한다.'],
+    ['n', '전달자 채널로 짧은 쪽지를 보낸다. "위원님. 제7호에 대해 이야기하고 싶습니다."'],
+  ],
+  next: 'd2s2',
+},
+d2s2: {
+  lines: () => [
+    ['loc', '엘리트 구역 · 폐쇄된 온실 · 정오'],
+    ['위원', '하위구역 전달자. 생각보다 대담하군요.'],
+    ['위원', '부정하지 않겠어요. 공급은 우리가 줄였어요.'],
+    ['n', '위원이 그래프를 펼친다. 아래로 꺾이는 선.'],
+    ['위원', '이대로면 열여덟 달 뒤 비축이 바닥나요. 모두를 살릴 수 없다면, 도시를 살려야 해요.'],
+    ['전달자', '그 도시에 우리는 없던데요.'],
+    ['위원', '…그래서 제안하죠. 문서를 돌려주면 상위구역 거주권. 그리고 동생의 치료.'],
+    ...(s.report ? [['i', '금고 속 보고서가 떠오른다. 「보류」라는 도장.']] : []),
+  ],
+  choice: { prompt: '무엇을 요구할까?', opts: () => [
+    { t: '"하위구역 배급을 원래대로 돌려놔요."', fx: () => { s.deal = 'A'; led('DAY 2 — 위원에게 하위구역 배급 복구를 요구했다.'); },
+      after: [['위원', '하위구역을 다 먹이면 도시가 먼저 굶어요.'], ['위원', '…일부. 사흘 안에 답을 주죠.']] },
+    { t: '"동생의 치료. 그리고 내 안전."', fx: () => { s.deal = 'B'; s.medicine = true; s.amb++; rel('wiwon', 1); led('DAY 2 — 위원에게 동생의 약과 나의 안전을 요구했다.'); },
+      after: [['위원', '현명하네요.'], ['n', '위원이 작은 약병을 건넨다. 차갑고, 가볍다.'], ['위원', '문서는 곧 받으러 가죠.']] },
+    { t: '"아직 아무것도 원하지 않아요. 이건 시작일 뿐이에요."', fx: () => { s.deal = 'C'; s.amb++; s.susp++; rel('wiwon', -1); led('DAY 2 — 위원 앞에서 대답을 미루고 판을 키웠다.'); },
+      after: [['위원', '시간은 당신 편이 아니에요.']] },
+    { t: '"보류한 수리안, 왜 묻었죠?"', if: () => s.report, lock: '보고서가 있어야 한다',
+      fx: () => { s.deal = 'D'; s.thirdWay = true; rel('wiwon', 1); led('DAY 2 — 위원에게 묻혀 있던 수리안을 따졌다.'); },
+      after: [['n', '위원이 처음으로 대답을 머뭇거린다.'], ['위원', '…위험 부담이 큰 안이에요. 하지만, 다시 보죠.']] },
+  ] },
+  next: 'd2s3',
+},
+d2s3: {
+  lines: () => [
+    ['loc', '지하 구역 · 밤'],
+    ...(s.medicine ? [['n', '약을 먹은 동생이 오랜만에 깊이 잠들었다.']] : []),
+    ['영감', '오늘 위쪽에 다녀왔다며. 무슨 일이냐.'],
+  ],
+  choice: { prompt: '영감에게 말할까?', opts: () => [
+    { t: s.told ? '위원을 만난 일까지 전부 말한다.' : '모든 것을 말한다.',
+      fx: () => { s.told = true; s.hidden = false; s.susp++; rel('yeong', 1); note('소문은 금방 퍼진다.'); },
+      after: () => [['영감', s.deal === 'B' ? '…약값으로 그걸 받았구나. 아니, 탓하는 게 아니다.' : '…위에서 우리를 지우고 있었다는 거군.'], ['영감', '아래 사람들한테도 알리마. 혼자 짊어지지 마라.']] },
+    { t: '"그냥 배달이었어요."', fx: () => { if (s.deal === 'B') s.secretDeal = true; if (!s.told) s.hidden = true; },
+      after: [['영감', '…그래. 그냥 배달이었겠지.']] },
+  ] },
+  next: 'd3',
+},
+/* ======================= DAY 3 ======================= */
+d3: { card: [3, 'THE ALLIANCE', '누구를 믿을 것인가?'], next: 'd3s0' },
+d3s0: {
+  lines: () => [
+    ['i', '혼자서는 이 문서를 증명할 수도, 지킬 수도 없다.'],
+    ['i', '직인을 확인해줄 배급국의 과장. 도시의 불을 쥔 발전소의 반장.'],
+    ['i', '둘 다 만나야 한다. 하지만 먼저 찾아간 쪽이 먼저 믿는다.'],
+  ],
+  choice: { prompt: '누구를 먼저 만날까? 지도에서 고르세요.', ui: 'map', opts: () => [
+    { t: '배급국의 과장.', zone: 'admin', fx: () => { s.meetFirst = 'gwan'; } },
+    { t: '발전소의 반장.', zone: 'plant', fx: () => { s.meetFirst = 'ban'; } },
+  ] },
+  next: () => s.meetFirst === 'gwan' ? 'd3gwan' : 'd3ban',
+},
+d3gwan: {
+  enter: () => { if (s.meetFirst === 'ban') rel('gwan', -1, true); },
+  lines: () => [
+    ['loc', '행정 구역 · 배급국'],
+    ['n', '서류 더미 사이, 도장을 찍는 손이 멈춘다.'],
+    ...(s.meetFirst === 'ban' ? [['과장', '발전소에 먼저 들렀다던데. 나는 두 번째인가.']] : [['과장', '하위구역 전달자가 무슨 일로.']]),
+    ['전달자', '과장님이 찍는 삭감 도장. 이유를 아세요?'],
+    ['과장', '생산 차질. 공문에 그렇게 나와 있지.'],
+  ],
+  choice: { prompt: '과장을 어떻게 움직일까?', opts: () => [
+    { t: '원본을 보여주고 사실대로 말한다.', if: hasOrig, lock: '원본이 없다',
+      fx: () => { s.confirmed = true; rel('gwan', 1); if (s.rel.wiwon < 0) { s.susp++; note('과장의 동요가 위쪽에 전해질지도 모른다.'); } },
+      after: [['n', '긴 침묵.'], ['과장', '…이 직인, 진짜다. 내가 매일 보는 직인이야.'], ['과장', '나는 거짓을 집행해 왔군.']] },
+    { t: hasCopy() ? '사본만 보여준다.' : '베껴 쓴 메모만 보여준다.', fx: () => {},
+      after: [['과장', '사본으로는 아무것도 증명 못 해. 미안하지만.']] },
+    { t: '겁을 준다. "다음 삭감 대상은 행정직이에요."', fx: () => { s.lie = true; s.amb++; s.rel.gwan = Math.max(s.rel.gwan, 1); note('과장이 당신 편에 섰다. 지금은.'); led('DAY 3 — 과장에게 "다음은 행정직"이라고 거짓말했다.'); },
+      after: [['과장', '…그렇다면 나도 손 놓고 있을 순 없지.']] },
+  ] },
+  next: () => s.meetFirst === 'gwan' ? 'd3ban' : 'd3s3',
+},
+d3ban: {
+  enter: () => { if (s.meetFirst === 'gwan') rel('ban', -1, true); if (s.lure) rel('ban', -1, true); },
+  lines: () => [
+    ['loc', '생산 구역 · 발전소'],
+    ['n', '귀가 먹먹한 소음. 반장이 기름 묻은 손을 닦는다.'],
+    ...(s.lure ? [['반장', '어제 우리 애들 셋이 끌려갔다. 보안대가 "파업 모의"라더군.'], ['반장', '그 얘길 흘린 게 하위구역 전달자라는 말이 있던데.'], ['i', '검문소에서 던진 한마디가 여기까지 왔다.']] : []),
+    ...(s.meetFirst === 'gwan' ? [['반장', '배급국엔 먼저 들렀다지.']] : []),
+    ['전달자', '보여드릴 게 있어요.'],
+    ['반장', '…우선순위 1번이 생산 시설이라. 우리가 제일 덜 굶는 쪽이었군.'],
+    ['반장', '그래서. 이걸 왜 나한테 가져왔지?'],
+  ],
+  choice: { prompt: '반장과 무엇을 거래할까?', opts: () => [
+    { t: '전부 보여주고 함께하자고 한다.', fx: () => { rel('ban', 1); if (s.rel.ban >= 1) s.strike = true; },
+      after: () => [['반장', '우리가 왜 너희 때문에 손해를 봐야 하지?'], ...(s.rel.ban >= 1 ? [['반장', '…하지만 이용당하는 건 질렸다. 필요하면 발전소를 세우지.']] : [['반장', '…생각은 해보지. 그 이상은 약속 못 해.']])] },
+    { t: '정보를 넘기고 식량을 받는다.', fx: () => { s.amb++; rel('yeong', 1); note('지하 구역이 오늘은 배불리 먹는다.'); led('DAY 3 — 반장에게 정보를 팔고 식량을 받았다.'); },
+      after: [['반장', '거래는 거래지.'], ['n', '자루 두 개. 반장에게 당신은 장사꾼이다.']] },
+    { t: '"당신들 수리안이 묻혔어요."', if: () => s.report, lock: '보고서가 있어야 한다',
+      fx: () => { rel('ban', 2); s.strike = s.rel.ban >= 1; s.thirdWay = true; s.susp++; },
+      after: [['n', '반장이 보고서를 움켜쥔다.'], ['반장', '…「보류」? 우리가 석 달을 매달린 걸.'], ['반장', '좋아. 무슨 판을 짜든, 발전소는 네 편이다.']] },
+  ] },
+  next: () => s.meetFirst === 'ban' ? 'd3gwan' : 'd3s3',
+},
+d3s3: {
+  lines: () => [
+    ['loc', '지하 구역 · 저녁'],
+    ['n', '전달자 채널로 쪽지가 도착한다.'],
+    ...({ A: [['doc', '하위구역 배급 20% 복구. 대신 문서 반납. 이 제안은 닷새째까지 유효합니다. — 위원']],
+          B: [['doc', '치료는 계속됩니다. 약속을 잊지 마세요. — 위원']],
+          C: [['doc', '내일 정오까지. 그 뒤엔 보안대장이 대신 묻겠죠. — 위원']],
+          D: [['doc', '수리안 재검토를 지시했어요. 그러니 당신도 시간을 주세요. — 위원']] }[s.deal]),
+    ['i', '내일이면 나흘째다.'],
+  ],
+  enter: () => { if (s.deal === 'A') s.offerPact = true; },
+  next: 'd4',
+},
+/* ======================= DAY 4 ======================= */
+d4: { card: [4, 'THE BLACKOUT', '누구를 먼저 구할 것인가?'], next: 'd4s1' },
+d4s1: {
+  lines: () => [
+    ['loc', '새벽 3시'],
+    ['n', '쾅— 하는 소리와 함께 세상이 검어진다.'],
+    ['n', '비상등이 켜진다. 엘리트 구역 쪽만.'],
+    ['i', '비상 차단 순서. 하위구역부터. 문서에 적힌 그대로다.'],
+    ['영감', '병동 산소 장치가 멈췄다! 동생이 거기 있어!'],
+    ...(s.medicine ? [['n', '약 덕분에 동생의 숨은 아직 고르다. 하지만 오래는 못 버틴다.']] : [['n', '동생의 숨이 가쁘다.']]),
+    ['n', '남은 전력은 한 곳으로만 돌릴 수 있다. 결정은 발전소와 배급국에서 한다.'],
+    ...(s.rel.ban < 0 && s.rel.gwan < 0 ? [['n', '발전소도, 배급국도 문을 열어주지 않았다.'], ['i', '아무도 내 말을 듣지 않는다. 전력은 정해진 대로 생산 시설로 갔다.']]
+      : s.rel.ban >= 0 ? [['반장', '(무전) 남은 라인은 하나다. 어디로 돌려?']] : [['과장', '(전화) 배분표를 고칠 수 있는 건 지금뿐이야. 어디로?']]),
+  ],
+  choice: () => (s.rel.ban < 0 && s.rel.gwan < 0) ? null : { prompt: '손전등으로 배전반을 비추고, 케이블을 끌어다 꽂으세요.', ui: 'switch', timer: 20, def: 1, opts: () => [
+    { t: '지하 병동으로.', label: '지하 병동', fx: () => { s.saved = true; rel('yeong', 1); rel('ban', -1); },
+      after: [['n', '병동에 불이 들어온다. 그리고 정수 시설이 멈춘다.'], ['위원', '(방송) …이래서 계획이 필요했던 겁니다.']] },
+    { t: '생산 시설을 지킨다.', label: '생산 시설', fx: () => { s.critical = !(s.medicine || s.fed >= 2); rel('ban', 1); rel('yeong', -1); },
+      after: () => [['n', '공장의 불빛이 돌아온다. 도시의 내일이 지켜졌다.'], ...(s.critical ? [['n', '병동에서 비명이 들린다. 동생의 숨이 얕아졌다.']] : [['n', '동생은 버텼다. 하지만 병동의 다른 침대 두 개가 비었다.']])] },
+    { t: '엘리트 구역의 전력을 끊어서 나눈다.', label: '엘리트 구역 → 분배', if: () => s.rel.ban >= 1 || s.rel.gwan >= 1, lock: '반장이나 과장의 깊은 신뢰가 필요하다',
+      fx: () => { s.saved = true; s.war = true; s.amb++; s.susp = 3; s.rel.wiwon = -2; note('되돌릴 수 없다. 엘리트는 이것을 기억할 것이다.'); led('DAY 4 — 엘리트 구역의 전력을 끊어 병동과 시설에 나눴다.'); },
+      after: [['n', '엘리트 구역의 불빛이 하나씩 꺼진다. 병동과 공장에 동시에 불이 들어온다.'], ['i', '이제 전쟁이다.']] },
+  ] },
+  enter: () => { if (s.rel.ban < 0 && s.rel.gwan < 0) { s.critical = !(s.medicine || s.fed >= 2); rel('yeong', -1, true); } },
+  next: 'd4s2',
+},
+d4s2: {
+  lines: () => {
+    s._hunt = s.copyAtYeong || s.susp >= 3;
+    if (!s._hunt) return [['loc', '지하 구역 · 아침'], ['n', '문틈에 쪽지가 끼워져 있다.'], ['doc', '닷새째에 보자. — 보안대장'], ['i', '아직은 나를 건드리지 못한다. 아직은.']];
+    const L = [['loc', '지하 구역 · 아침'], ['n', '어둠을 틈타 보안대가 움직였다.']];
+    if (s.copyAtYeong) {
+      L.push(['n', '영감의 작업장이 뒤집혀 있다. 사본이 사라졌다.']);
+      if (s.hidden) { L.push(['영감', '네가 맡긴 "물건"이… 이거였냐.'], ['영감', '나한테까지 숨겼어.']); }
+    }
+    if (s._revealed) L.push(['보안대장', '위원님이 묻더군. 약값은 잘 받았냐고.'], ['n', '영감이 천천히 당신을 돌아본다.']);
+    L.push(['보안대장', '(영감의 팔을 비틀며) 원본. 지금.']);
+    return L;
+  },
+  enter: () => {
+    if (s.copyAtYeong || s.susp >= 3) {
+      if (s.copyAtYeong) { s.doc = s.doc === 'both' ? 'orig' : s.doc; if (s.hidden) rel('yeong', -2); }
+      if (s.secretDeal) { rel('yeong', -2); s.secretDeal = false; s._revealed = true; }
+    }
+  },
+  choice: () => !(s.copyAtYeong || s.susp >= 3) || !hasOrig() ? null : { prompt: '보안대장이 영감을 붙잡고 있다.', timer: 10, def: 1, opts: () => [
+    { t: '원본을 넘긴다.', fx: () => { s.doc = 'none'; s.amb = Math.max(0, s.amb - 1); note('보안대장이 문서를 챙겨 사라졌다.'); led('DAY 4 — 영감을 구하려고 원본을 넘겼다.'); },
+      after: [['영감', '…바보 같은 놈.'], ['i', '손이 비었다.']] },
+    { t: '버틴다. "그를 다치게 하면 문서는 오늘 밤 공개돼."', fx: () => { rel('yeong', s.susp >= 3 ? -2 : -1); },
+      after: [['n', '둔탁한 소리. 영감이 쓰러진다.'], ['보안대장', '…내일 광장에서 보지.'], ['i', '원본은 아직 내 손에 있다. 대가를 치르고.']] },
+    { t: '미리 손잡은 사람을 부른다.', if: () => s.rel.ban >= 1 || s.rel.gwan >= 1, lock: '반장이나 과장의 깊은 신뢰가 필요하다',
+      fx: () => { s.debt = s.rel.ban >= 1 ? 'ban' : 'gwan'; note('이 빚은 갚아야 한다.'); led(`DAY 4 — ${ROLE[s.debt]}의 사람들을 불러 보안대를 막았다.`); },
+      after: () => [['n', s.debt === 'ban' ? '발전소 작업복들이 골목을 메운다.' : '배급국 직원들이 명부를 들고 나타난다. "이 구역 수색은 승인된 적 없습니다."'], ['n', '보안대가 물러선다.'], ['i', '영감도, 원본도 지켰다. 하지만 누군가 그 값을 치를 것이다.']] },
+  ] },
+  next: 'd5',
+},
+/* ======================= DAY 5 ======================= */
+d5: { card: [5, 'THE FINAL DEAL', '마지막 거래'], next: 'd5s1' },
+d5s1: {
+  enter: () => {
+    if (s.lie && s.rel.gwan > 0) { s.lieExposed = true; s.rel.gwan = -1; }
+    if (s.secretDeal) { rel('yeong', -1, true); }
+  },
+  lines: () => [
+    ['loc', '중앙 광장 · 비상 위원회'],
+    ['n', '정전 이틀째. 네 계급이 처음으로 한자리에 모였다.'],
+    ['위원', '(연단) 이번 정전은 하위구역의 불법 전력 도용 때문입니다.'],
+    ['n', '수천 개의 시선이 지하 구역 쪽으로 향한다.'],
+    ...(s.lieExposed ? [['과장', '(낮게) 행정직 삭감 계획 같은 건 없더군. 확인했어.'], ['과장', '나를 이용했어.']] : []),
+    ...(s.secretDeal ? [['영감', '약값이 뭐였는지 들었다.'], ['i', '영감이 시선을 피한다.']] : []),
+    ...(s.debt ? [[ROLE[s.debt], `어제 일로 우리 쪽 셋이 구금됐다. 이 빚, 오늘 갚아라.`]] : []),
+    ...(s.offerPact ? [['i', '위원이 눈짓한다. 20% 복구 제안은 아직 유효하다.']] : []),
+    ...(s.war ? [['i', '엘리트 구역은 아직도 어둡다. 위원의 눈에는 분노뿐이다.']] : []),
+    ['의장', '하위구역 전달자. 할 말이 있다면 지금 하라.'],
+    ['i', docMeaning()],
+  ],
+  choice: { prompt: '단 한 번의 발언. 무엇을 할 것인가?', opts: () => [
+    { t: '문서를 공개하고, 모두가 결정에 참여하는 위원회를 요구한다.', if: hasDoc, lock: '문서가 없다', fx: () => { s.final = 1; } },
+    { t: '문서를 공개하고, 하위구역을 대표해 내가 위원석에 앉겠다고 말한다.', if: hasDoc, lock: '문서가 없다', fx: () => { s.final = 2; } },
+    { t: '공개하지 않는다. 위원과 배급 개선 계약을 맺는다.', if: hasDoc, lock: '문서가 없다', fx: () => { s.final = 3; } },
+    { t: '원본을 위원에게 넘기고, 상위구역으로 간다.', if: hasOrig, lock: '원본이 없다', fx: () => { s.final = 4; } },
+    { t: '문서는 없다. 맨손으로 호소한다.', if: () => !hasDoc(), lock: '아직 문서가 있다', fx: () => { s.final = 5; } },
+  ] },
+  next: 'd5s2',
+},
+d5s2: {
+  enter: () => { s.ending = judge(); },
+  lines: () => FINAL_LINES[s.ending](),
+  choice: { prompt: '모든 것이 끝난 뒤. 영감에게 마지막으로 한마디.', opts: () => [
+    { t: '"미안해요."', fx: () => { s.last = '미안해요, 라는 말은 생각보다 가벼웠다.'; } },
+    { t: '"이게 최선이었어요."', fx: () => { s.last = '최선이었다고 말했다. 영감은 대답하지 않았다.'; } },
+    { t: '(아무 말도 하지 않는다.)', fx: () => { s.last = '아무 말도 하지 않았다. 침묵이 가장 정직한 대답이었다.'; } },
+  ] },
+  next: 'END',
+},
+};
+
+function docMeaning() {
+  if (s.doc === 'both' || s.doc === 'orig') return '내 손에는 원본이 있다. 지도부의 직인이 찍힌, 단 한 장의 진실.';
+  if (s.doc === 'copy') return s.confirmed ? '내 손에는 사본뿐이다. 하지만 과장이 그 직인을 확인했다.' : '내 손에는 사본뿐이다. 누구라도 "위조"라고 외칠 수 있다.';
+  return '내 손에는 아무것도 없다.';
+}
+
+/* ---------------- 엔딩 판정 ---------------- */
+function allies(forReveal) {
+  let n = 0;
+  if (s.rel.gwan >= 1 && !s.lieExposed && (!forReveal || s.confirmed)) n++;
+  if (s.rel.ban >= 1) n++;
+  if (s.rel.yeong >= 1) n++;
+  return n;
+}
+function evidence() { return hasOrig() || (hasCopy() && s.confirmed && !s.lieExposed); }
+function judge() {
+  const f = s.final;
+  if (f === 5) return 'FALL';
+  if (f === 4) return 'BETRAYAL';
+  if (f === 3) return (hasDoc() && (s.rel.wiwon >= 0 || allies(false) >= 1)) ? 'PACT' : 'FALL';
+  if (f === 2) {
+    if (s.amb >= 2) return (evidence() && allies(true) >= 1) ? 'RISE' : 'FALL';
+    return (evidence() && allies(true) >= 2) ? 'REVOLUTION' : 'FALL';
+  }
+  return (evidence() && allies(true) >= 2) ? 'REVOLUTION' : 'FALL';
+}
+const FINAL_LINES = {
+  REVOLUTION: () => [['n', '당신이 문서를 들어 올린다.'], ...(s.confirmed && s.rel.gwan >= 1 ? [['과장', '그 직인은 진짜입니다. 제가 매일 찍어온 직인이니까.']] : []),
+    ...(s.strike ? [['반장', '발전소는 오늘부터 멈춘다. 배급표를 다시 쓸 때까지.']] : []), ...(s.rel.yeong >= 1 ? [['n', '지하 구역 사람들이 광장을 메운다.']] : []), ['위원', '…당신들은 지금 도시를 무너뜨리고 있어요.'], ['n', '그러나 아무도 물러서지 않았다.']],
+  RISE: () => [['n', '당신이 문서를 들어 올린다. 광장이 술렁인다.'], ['전달자', '이 도시의 결정에, 이제 하위구역의 자리가 필요합니다. 제가 그 자리에 앉겠습니다.'], ['n', '박수와 야유가 뒤섞인다. 위원이 당신을 오래 바라본다.'], ['위원', '…앉아보면 알게 될 거예요. 이 자리가 무엇을 요구하는지.']],
+  PACT: () => [['n', '당신은 문서를 꺼내지 않는다. 대신 위원에게 다가간다.'], ['위원', '현명한 선택이에요.'], ['n', '서명이 오간다. 광장의 누구도 그 종이의 내용을 모른다.']],
+  BETRAYAL: () => [['n', '당신은 연단으로 걸어가, 위원의 손에 원본을 쥐여준다.'], ['위원', '…당신은 계산을 아는 사람이었군요.'], ['n', '지하 구역 쪽에서 누군가 당신의 이름 대신 "배신자"를 외친다.']],
+  FALL: () => s.final === 5 ? [['전달자', '제 말을 믿어주세요. 공급 제한은 계획이었습니다!'], ['위원', '증거는요?'], ['n', '광장은 조용하다. 아무도 당신 편에 서지 않는다.']]
+    : [['n', '당신이 문서를 들어 올린다.'], ['위원', '하위구역이 만든 위조 문서군요.'], ['n', '당신은 주위를 돌아본다. 함께 서줄 사람이 보이지 않는다.'], ['보안대장', '압수한다.']],
+};
+const ENDINGS = {
+  RISE: { code: 'THE RISE', sub: '권력의 상승',
+    text: () => '당신은 비밀로 엘리트의 권력을 무너뜨리고, 하위구역을 대표하는 새로운 권력이 되었다. 첫 회의 날, 당신 앞에 놓인 것은 또 하나의 배급표였다. 누군가는 덜 먹어야 한다. 이번에는, 당신이 정해야 한다.',
+    gain: '권력과 영향력', lose: '처음의 신념을 지킬 가능성', q: '권력을 얻은 사람은 이전의 지배자와 달라질 수 있을까?' },
+  REVOLUTION: { code: 'THE REVOLUTION', sub: '혁명',
+    text: () => '비밀은 모두에게 공개되었고, 네 계급이 함께 배급을 정하는 새로운 위원회가 열렸다.' + (s.thirdWay ? ' 묻혀 있던 수리안이 첫 안건으로 올라왔다. 다른 길이 있을지도 모른다.' : ' 그러나 비축량 그래프는 여전히 아래로 꺾여 있다.') + ' 낡은 질서는 무너졌고, 새 질서가 버틸지는 아무도 모른다.',
+    gain: '공정한 결정권과 변화의 가능성', lose: '기존 체계의 안정성', q: '더 공정한 사회를 위한 변화에는 어느 정도의 위험을 감수해야 할까?' },
+  PACT: { code: 'THE PACT', sub: '타협',
+    text: () => `하위구역의 배급은 ${s.offerPact ? '20%' : '10%'} 늘었다. 동생은 다음 겨울을 넘길 수 있을 것이다. 하지만 문서는 위원의 금고로 돌아갔고, 공지는 여전히 "생산 차질"이라고 말한다.` + (s.thirdWay ? ' 계약서 한 줄에, 수리안 재검토가 들어갔다.' : ''),
+    gain: '당장의 생존과 안정', lose: '진실을 공개하고 구조를 바꿀 기회', q: '불완전한 타협도 누군가를 살릴 수 있다면 가치 있는 선택일까?' },
+  BETRAYAL: { code: 'THE BETRAYAL', sub: '배신',
+    text: () => s.rel.wiwon <= -2 ? '위원은 문서를 받았지만, 약속한 자리는 주지 않았다. 당신은 상위구역 끝, 아무도 찾지 않는 방으로 "조용히" 옮겨졌다. 아래로도, 위로도 돌아갈 곳이 없다.'
+      : '상위구역의 창문은 따뜻하다. 동생은 치료를 받는다. 지하 구역의 배급은 다음 주에 또 줄어들 것이다. 그리고 그곳의 누구도, 더 이상 당신의 이름을 부르지 않는다.',
+    gain: '개인의 안전과 높은 지위', lose: '동료와의 관계, 신뢰', q: '자신의 생존을 위해 다른 사람을 희생시키는 선택은 어디까지 정당화될 수 있을까?' },
+  FALL: { code: 'THE FALL', sub: '몰락',
+    text: () => (hasDoc() ? '문서는 압수되었고, "위조"라는 낙인과 함께 불태워졌다. ' : '증거 없는 진실은 소문이 되었다. ') + '하위구역의 배급은 다음 주부터 더 줄어든다. 당신은 옳은 것을 알고 있었다. 그것만으로는 아무것도 바꾸지 못했다.',
+    gain: '없음', lose: '정보, 신뢰, 협상의 기회', q: '좋은 의도만으로 좋은 결과를 만들 수 있을까?' },
+};
+
+
+/* =====================================================================
+   재생 엔진 — 비주얼노벨형 화면 + 미니 인터랙션
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const BOX = $('box'), NAME = $('name'), TEXT = $('text'), OV = $('overlay'), BG = $('bg');
+const CLASS_OF = { 영감: 'shadow', 동생: 'shadow', 전달자: 'shadow', 위원: 'elite', 보안대장: 'elite', 목소리: 'elite', 의장: 'elite', 과장: 'authority', 반장: 'supplier' };
+const TINT = { shadow: '#3a1f1d', elite: '#d8d2c6', authority: '#6f6a64', supplier: '#7a4128' };
+const EDGE = { shadow: '#B34D49', elite: '#ffffff', authority: '#bbb', supplier: '#e08a52' };
+let history = [];
+
+function silhouette(cls) {
+  const dot = { shadow: '#E3241B', elite: '#e9e6df', authority: '#9a9a9a', supplier: '#c9c9c9' }[cls];
+  return `<svg viewBox="0 0 200 400" preserveAspectRatio="xMidYMax meet"><defs>
+    <pattern id="ht${cls}" width="5" height="5" patternUnits="userSpaceOnUse"><circle cx="2.5" cy="2.5" r="1.7" fill="${dot}"/></pattern>
+    <linearGradient id="fd${cls}" x1="0" y1="0" x2="0" y2="1"><stop offset=".55" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>
+    <mask id="mk${cls}"><rect width="200" height="400" fill="url(#fd${cls})"/></mask></defs>
+    <g mask="url(#mk${cls})"><path d="M100 70 a44 50 0 1 1 0.1 0 Z M18 400 C18 260 46 210 100 205 C154 210 182 260 182 400 Z" fill="url(#ht${cls})"/>
+    <path d="M100 70 a44 50 0 1 1 0.1 0 Z M18 400 C18 260 46 210 100 205 C154 210 182 260 182 400 Z" fill="none" stroke="#E3241B" stroke-width="1.2" stroke-dasharray="4 3"/></g>
+    <rect x="40" y="10" width="120" height="140" fill="none" stroke="#E3241B" stroke-width="1"/><text x="42" y="164" font-family="monospace" font-size="9" fill="#E3241B">ID.${cls.toUpperCase()}</text></svg>`;
+}
+const CLASS_EN = { shadow: 'THE SHADOW', elite: 'THE ELITE', authority: 'THE AUTHORITY', supplier: 'THE SUPPLIERS' };
+function rnd(seed) { let a = 0; for (const c of seed) a = (a * 31 + c.charCodeAt(0)) | 0; return () => { a = (a * 1103515245 + 12345) & 0x7fffffff; return a / 0x7fffffff; }; }
+const HUD_WORDS = {
+  under: ['RATION −40%', 'SECTOR B-4', 'PRIORITY 04/04', 'Breathing', 'Coin', 'Salvation', 'HEAT LOSS'],
+  elite: ['COUNCIL', 'ORDER No.7', 'Heaven', 'ACCESS: GRANTED', 'Cloud', 'RESERVE 18M'],
+  office: ['OBJ-SCAN', 'FILE 07', 'DRAWER A', 'SAFE / 4-DIGIT', 'CLEARANCE: NONE'],
+  check: ['CHECKPOINT 02', 'SCAN', 'BAG: SEALED', 'SUSPECT?', 'GATE LOG'],
+  workshop: ['COPY 01', 'Light', 'NIGHT 23:40', 'SAFEHOUSE', 'Breathing'],
+  green: ['GREENHOUSE', 'FORECAST −18M', 'Heaven', 'OFFER', 'TERMS'],
+  admin: ['DISTRIB. BUREAU', 'STAMP', 'FORM 12-B', 'QUOTA', 'VERIFY'],
+  plant: ['GENERATOR 3', 'OUTPUT 61%', 'STRIKE?', 'LOAD', 'REPAIR PLAN: HOLD'],
+  dark: ['GRID FAILURE', 'CUT ORDER ①', 'O2 OFFLINE', 'Morgue', 'Light'],
+  plaza: ['EMERGENCY COUNCIL', 'Crowd', 'Creator', 'VOTE', 'Salvation', 'TRUTH?'],
+};
+function hudSvg(key, loc) {
+  const r = rnd(loc), W = 1600, H = 900, words = HUD_WORDS[key] || HUD_WORDS.under;
+  const hub = [W * (0.72 + r() * 0.2), H * (0.06 + r() * 0.1)];
+  let g = `<rect x="${hub[0] - 70}" y="${hub[1] - 16}" width="140" height="26" fill="#E3241B"/><text x="${hub[0] - 62}" y="${hub[1] + 3}" font-family="monospace" font-size="15" font-weight="700" fill="#0b0b0b">${key === 'plaza' || key === 'elite' ? 'Creator' : 'NODE.' + Math.floor(r() * 90 + 10)}</text>`;
+  words.forEach((w, i) => {
+    const x = W * (0.05 + r() * 0.7), y = H * (0.18 + r() * 0.5), bw = 120 + r() * 160, bh = 60 + r() * 120;
+    const solid = r() < 0.35;
+    g += `<line x1="${hub[0]}" y1="${hub[1]}" x2="${x + bw / 2}" y2="${y + bh}" stroke="#E3241B" stroke-width="1.6"/>`;
+    g += solid ? `<rect x="${x}" y="${y}" width="${bw}" height="${bh * 0.45}" fill="#E3241B" opacity=".92"/><text x="${x + 8}" y="${y + 20}" font-family="monospace" font-size="13" fill="#0b0b0b">${w}</text>`
+      : `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" fill="none" stroke="#E3241B" stroke-width="1.4"/><text x="${x + 6}" y="${y + bh - 8}" font-family="Arial" font-size="${18 + r() * 10}" fill="#E3241B">${w}</text>
+         <text x="${x + 4}" y="${y + 13}" font-family="monospace" font-size="10" fill="#E3241B">${(37 + r()).toFixed(4)}, ${(127 + r()).toFixed(4)}</text>`;
+  });
+  for (let i = 0; i < 3; i++) { const x = W * r(), y = H * r(); g += `<rect x="${x}" y="${y}" width="${18 + r() * 20}" height="${18 + r() * 20}" fill="#E3241B"/>`; }
+  g += `<text x="${W * 0.03}" y="${H * 0.95}" font-family="monospace" font-size="12" fill="#E3241B" opacity=".8">${loc.toUpperCase()} // FILE.THE-DEAL // ${new Date(2026, 10, 24).toISOString().slice(0, 10)}</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" style="opacity:.82">${g}</svg>`;
+}
+function skyline(key, loc) {
+  if (['dark', 'office', 'workshop'].includes(key)) return '';
+  const r = rnd(loc + 'sky'); let x = 0, p = '';
+  while (x < 1600) { const w = 40 + r() * 110, h = 80 + r() * (key === 'elite' ? 420 : 260); p += `<rect x="${x}" y="${600 - h}" width="${w}" height="${h}"/>`; if (r() < 0.4) p += `<rect x="${x + w * 0.3}" y="${600 - h - 30 - r() * 60}" width="${w * 0.2}" height="${60}"/>`; x += w + r() * 14; }
+  return `<svg class="sky" viewBox="0 0 1600 600" preserveAspectRatio="none"><g fill="#050505" opacity=".85">${p}</g></svg>`;
+}
+function setBg(loc) {
+  const m = [['지하', 'under'], ['검문', 'check'], ['비서실', 'office'], ['계단', 'office'], ['엘리트', 'elite'], ['작업장', 'workshop'], ['온실', 'green'], ['배급국', 'admin'], ['행정', 'admin'], ['발전소', 'plant'], ['생산', 'plant'], ['새벽 3시', 'dark'], ['광장', 'plaza']];
+  const hit = m.find(([k]) => loc.includes(k)); const key = hit ? hit[1] : 'under';
+  BG.className = 'bg-' + key; BG.innerHTML = skyline(key, loc);
+  const hl = $('hudlayer'); hl.innerHTML = hudSvg(key, loc); hl.classList.remove('glitch'); void hl.offsetWidth; hl.classList.add('glitch');
+  const tag = $('locTag'); tag.textContent = loc; tag.style.opacity = 1;
+}
+function showSpeaker(who) {
+  const L = $('chL'), R = $('chR');
+  if (!who || who === 'n' || who === 'i') { L.className = 'ch' + (L.dataset.who ? ' on dim' : ''); R.className = 'ch' + (R.dataset.who ? ' on dim' : ''); return; }
+  const cls = CLASS_OF[who] || 'elite';
+  const side = who === '전달자' ? L : R, other = side === L ? R : L;
+  if (side.dataset.who !== who) { side.innerHTML = silhouette(cls) + `<span class="tag">${who}<small>${CLASS_EN[cls]}</small></span>`; side.dataset.who = who; }
+  side.className = 'ch on'; if (other.dataset.who) other.className = 'ch on dim';
+}
+function clearChars() { ['chL', 'chR'].forEach(id => { const e = $(id); e.className = 'ch'; e.dataset.who = ''; e.innerHTML = ''; }); }
+
+/* ---- 대사 재생 ---- */
+let queue = [], onDone = null, typing = null, full = '', awaiting = false;
+function playLines(lines, done) { queue = lines.slice(); onDone = done; nextLine(); }
+function nextLine() {
+  if (!queue.length) { awaiting = false; BOX.classList.add('hide'); const d = onDone; onDone = null; if (d) d(); return; }
+  const [who, text] = queue.shift();
+  if (who === 'loc') { setBg(text); clearChars(); history.push(['', `— ${text} —`]); return nextLine(); }
+  if (who === 'doc') { return showPaperNote(text, nextLine); }
+  history.push([who === 'n' ? '' : who === 'i' ? '속마음' : who, text]);
+  BOX.classList.remove('hide');
+  NAME.textContent = who === 'n' ? '' : who === 'i' ? 'INNER // 속마음' : `${who} // ${CLASS_EN[CLASS_OF[who] || 'elite']}`;
+  TEXT.className = who === 'n' ? 'narr' : who === 'i' ? 'inner' : '';
+  showSpeaker(who);
+  full = text; TEXT.textContent = ''; let i = 0; awaiting = true;
+  clearInterval(typing);
+  typing = setInterval(() => { i++; TEXT.textContent = full.slice(0, i); if (i >= full.length) { clearInterval(typing); typing = null; } }, 24);
+}
+function advance() {
+  if (!awaiting) return;
+  if (typing) { clearInterval(typing); typing = null; TEXT.textContent = full; return; }
+  nextLine();
+}
+BOX.addEventListener('click', advance);
+document.addEventListener('keydown', e => { if ((e.code === 'Space' || e.code === 'Enter') && !OV.classList.contains('on')) { e.preventDefault(); advance(); } });
+
+function overlay(html, shade = true) { OV.innerHTML = html; OV.className = 'on' + (shade ? ' shade' : ''); OV.classList.add('fade'); $('hudlayer').classList.add('faint'); }
+function closeOverlay() { OV.className = ''; OV.innerHTML = ''; $('hudlayer').classList.remove('faint'); }
+function showPaperNote(text, cb) {
+  BOX.classList.add('hide');
+  history.push(['문서', text]);
+  overlay(`<div class="paper">${text.replace(/\n/g, '<br>')}</div><button class="btn" id="pk">계속</button>`);
+  $('pk').onclick = () => { closeOverlay(); cb(); };
+}
+
+/* ---- 알림 · HUD ---- */
+function flushNotices() {
+  const box = $('notices');
+  s.notices.forEach((t, i) => setTimeout(() => { const n = document.createElement('div'); n.className = 'notice'; n.textContent = t; box.appendChild(n); setTimeout(() => n.remove(), 4300); }, i * 450));
+  s.notices = [];
+}
+function hud(day) {
+  $('day').textContent = day ? `DAY-0${day} / 05` : 'THE DEAL';
+  const d = $('doc');
+  const t = { none: 'NO FILE', orig: 'FILE: ORIGINAL', both: 'FILE: ORIGINAL + COPY', copy: 'FILE: COPY ONLY' }[s.doc];
+  d.textContent = t + (s.report && s.doc !== 'none' ? ' + REPORT' : '');
+  d.className = s.doc === 'none' ? '' : 'on';
+  dbg();
+}
+
+/* ---- 장면 진행 ---- */
+function run(id) {
+  if (id === 'END') return showEnding();
+  const sc = SCENES[id];
+  if (sc.card) {
+    s.day = sc.card[0]; hud(s.day || null); if (!sc.card[0]) $('day').textContent = 'PROLOGUE'; BOX.classList.add('hide'); clearChars(); BG.className = 'bg-dark'; BG.innerHTML = ''; $('hudlayer').innerHTML = hudSvg('dark', 'DAY' + sc.card[0]); $('locTag').style.opacity = 0;
+    const DATA = { 0: 'CITY-07 · 7 YEARS AFTER THE GATE CLOSED · POPULATION: UNREGISTERED', 1: 'ORDER No.7 · SUPPLY RESTRICTION · STATUS: CLASSIFIED', 2: 'CONTACT · ELITE COUNCIL · TERMS: UNKNOWN', 3: 'ALLY SEARCH · AUTHORITY / SUPPLIERS · TRUST: VARIABLE', 4: 'GRID FAILURE · CUT ORDER ① · SECTOR: SHADOW', 5: 'EMERGENCY COUNCIL · FINAL TERMS · OUTCOME: PENDING' }[sc.card[0]];
+    overlay(`<div class="card"><div class="vert">${sc.card[0] ? 'DAY-0' + sc.card[0] : 'FILE-00'}</div><div class="t">${sc.card[1].replace(' ', '<br>')}</div>
+      <div class="k"><span class="xhair"></span>${sc.card[2]}</div>
+      <div class="data">${DATA}<br>LOC 37.5${sc.card[0]}12, 127.0${sc.card[0]}84 // CITY-07 // TRADE ROUTE: OFFLINE</div>
+      <div class="bar">모든 선택에는 대가가 따르고, 모든 거래는 관계를 변화시킨다.</div><br>
+      <button class="btn" id="go" style="margin:28px 0 0 44px">▶ CONTINUE</button></div>`, false);
+    $('go').onclick = () => { closeOverlay(); run(sc.next); };
+    return;
+  }
+  if (sc.enter) sc.enter();
+  hud(s.day); flushNotices();
+  const go = () => run(typeof sc.next === 'function' ? sc.next() : sc.next);
+  const afterAll = extra => { hud(s.day); flushNotices(); playLines((extra || []).concat(sc.after ? sc.after() : []), go); };
+  playLines(sc.lines(), () => {
+    const doChoice = () => {
+      const ch = typeof sc.choice === 'function' ? sc.choice() : sc.choice;
+      if (!ch) return afterAll([]);
+      showChoice(ch, opt => afterAll(typeof opt.after === 'function' ? opt.after() : opt.after));
+    };
+    if (sc.mini) return MINI[sc.mini.type](sc.mini, () => { hud(s.day); flushNotices(); if (sc.choice) doChoice(); else afterAll([]); });
+    doChoice();
+  });
+}
+
+/* ---- 선택지 (기본 / 지도 / 배전반) ---- */
+let timerId = null;
+function showChoice(ch, cb) {
+  const opts = ch.opts();
+  let decided = false;
+  const pick = i => {
+    if (decided) return; decided = true; clearTimeout(timerId);
+    const o = opts[i]; o.fx(); history.push(['선택', o.t]); closeOverlay(); cb(o);
+  };
+  const ok = o => !o.if || o.if();
+  let def = ch.def || 0; if (!ok(opts[def])) def = opts.findIndex(ok);
+  if (ch.ui === 'map') return mapChoice(ch, opts, pick);
+  if (ch.ui === 'switch') return switchChoice(ch, opts, pick, def);
+  overlay(`<div class="choices"><div class="prompt">${ch.prompt}</div>${opts.map((o, i) => `<button class="opt" data-i="${i}" ${ok(o) ? '' : 'disabled'}><span class="no">0${i + 1}</span><span>${o.t}${ok(o) ? '' : `<span class="lock">[LOCKED] ${o.lock || '조건이 맞지 않는다'}</span>`}</span></button>`).join('')}${ch.timer ? '<div class="timer" id="tb"></div>' : ''}</div>`, false);
+  OV.querySelectorAll('.opt').forEach(b => b.onclick = () => pick(+b.dataset.i));
+  if (ch.timer) startTimer(ch.timer, () => { note('망설이는 사이, 선택이 정해졌다.'); pick(def); });
+}
+function startTimer(sec, cb) {
+  const tb = $('tb'); if (tb) { tb.style.transition = `transform ${sec}s linear`; requestAnimationFrame(() => requestAnimationFrame(() => tb.style.transform = 'scaleX(0)')); }
+  timerId = setTimeout(cb, sec * 1000);
+}
+function mapChoice(ch, opts, pick) {
+  const z = (cls, x, y, w, h, label, sub, i) => `<div class="zone ${i != null ? 'pick' : ''} ${cls}" ${i != null ? `data-i="${i}"` : ''} style="left:${x}%;top:${y}%;width:${w}%;height:${h}%">${label}<small>${sub}</small></div>`;
+  const iAdmin = opts.findIndex(o => o.zone === 'admin'), iPlant = opts.findIndex(o => o.zone === 'plant');
+  overlay(`<div class="ptitle">TACTICAL MAP // ${ch.prompt}</div><div class="map">
+    ${z('lockz', 30, 4, 40, 26, '엘리트 구역', 'ACCESS DENIED')}
+    ${z('', 4, 36, 38, 30, '행정 구역 · 배급국', 'TARGET: 과장 // 직인 확인 가능', iAdmin)}
+    ${z('', 58, 36, 38, 30, '생산 구역 · 발전소', 'TARGET: 반장 // 전력 통제', iPlant)}
+    ${z('you', 30, 72, 40, 24, '지하 구역', '■ YOU ARE HERE')}
+  </div><p class="help">먼저 찾아간 쪽이 먼저 믿는다. 다른 쪽은 소문으로 먼저 듣게 된다.</p>`);
+  OV.querySelectorAll('.zone.pick').forEach(b => b.onclick = () => pick(+b.dataset.i));
+}
+function switchChoice(ch, opts, pick, def) {
+  const ok = o => !o.if || o.if();
+  overlay(`<div class="ptitle">GRID CONTROL // ${ch.prompt}</div><div class="board" id="board">
+    <svg class="cable" id="cable"><path id="cpath" d="" stroke="#B34D49" stroke-width="6" fill="none" stroke-linecap="round"/></svg>
+    <div class="plug" id="plug">남은<br>전력</div>
+    ${opts.map((o, i) => `<div class="sock ${ok(o) ? '' : 'locked'}" data-i="${i}" style="top:${12 + i * 30}%">${o.label}<small>${ok(o) ? 'LINE 0' + (i + 1) + ' // READY' : '[LOCKED] ' + (o.lock || '')}</small></div>`).join('')}
+    <div class="dark" id="dk"></div></div><div class="timer" id="tb" style="width:min(760px,94vw)"></div>
+    <p class="help">어둠 속에서 손전등(마우스)으로 비추고, 빨간 플러그를 끌어 원하는 곳에 꽂으세요.</p>`);
+  const board = $('board'), dk = $('dk'), plug = $('plug'), path = $('cpath');
+  const rect = () => board.getBoundingClientRect();
+  const light = e => { const r = rect(); dk.style.setProperty('--x', (e.clientX - r.left) + 'px'); dk.style.setProperty('--y', (e.clientY - r.top) + 'px'); };
+  board.addEventListener('pointermove', light);
+  let drag = false;
+  const P0 = () => { const r = rect(), p = plug.getBoundingClientRect(); return [p.left - r.left + 35, p.top - r.top + 35]; };
+  plug.addEventListener('pointerdown', e => { drag = true; plug.setPointerCapture(e.pointerId); e.preventDefault(); });
+  plug.addEventListener('pointermove', e => {
+    light(e); if (!drag) return; const r = rect(), [x0, y0] = P0();
+    path.setAttribute('d', `M${x0} ${y0} C${x0 + 120} ${y0} ${e.clientX - r.left - 120} ${e.clientY - r.top} ${e.clientX - r.left} ${e.clientY - r.top}`);
+    OV.querySelectorAll('.sock').forEach(sk => { const b = sk.getBoundingClientRect(); sk.classList.toggle('hot', e.clientX > b.left && e.clientX < b.right && e.clientY > b.top && e.clientY < b.bottom); });
+  });
+  plug.addEventListener('pointerup', e => {
+    drag = false;
+    const hit = [...OV.querySelectorAll('.sock')].find(sk => { const b = sk.getBoundingClientRect(); return e.clientX > b.left && e.clientX < b.right && e.clientY > b.top && e.clientY < b.bottom; });
+    if (hit && !hit.classList.contains('locked')) { clearTimeout(timerId); pick(+hit.dataset.i); return; }
+    if (hit) { hit.classList.add('shake'); setTimeout(() => hit.classList.remove('shake'), 400); }
+    path.setAttribute('d', '');
+  });
+  OV.querySelectorAll('.sock').forEach(sk => sk.addEventListener('click', () => { if (!sk.classList.contains('locked') && window.__testClick) pick(+sk.dataset.i); }));
+  startTimer(ch.timer || 20, () => { note('망설이는 사이, 전력은 정해진 대로 흘러갔다.'); pick(def); });
+}
+
+/* ---- 미니 인터랙션 ---- */
+const SLIDES = [
+  { big: 'WAR<br>WAR<br>WAR', t: '전쟁은 한 번으로 끝나지 않았다.', s: '세 번의 전쟁이 지나간 뒤, 지도 위의 도시들은 하나씩 꺼졌다.' },
+  { big: 'CITY-07', t: '남은 것은 성벽으로 둘러싸인 도시 하나.', s: '교역로는 끊겼다. 식량과 에너지는 성벽 안에 있는 것이 전부다.' },
+  { diagram: true, t: '도시는 네 계급으로 나뉜다.', s: '배급은 위에서부터 차례로 내려온다.' },
+  { big: 'RATION<br>−40%', t: '위에서 조금 줄면, 아래에선 사라진다.', s: '그리고 가장 아래에는, 명단에 없는 사람들이 산다.' },
+];
+const MINI = {
+  slides(m, done) {
+    BOX.classList.add('hide'); let i = 0;
+    const show = () => {
+      const sl = SLIDES[i];
+      const diagram = `<div style="display:grid;gap:10px;margin:6px 0 0 44px;max-width:640px">
+        ${[['THE ELITE', '엘리트', '규칙을 만들고 배급을 정한다', '#E3241B', '#0b0b0b'], ['THE AUTHORITY', '중산층', '명령을 집행하고 장부를 관리한다', 'transparent', '#e9e6df'], ['THE SUPPLIERS', '노동계층', '식량과 전기를 만든다', 'transparent', '#e9e6df'], ['THE SHADOW', '하위계층', '성벽 안에 있지만, 명단에는 없다 ← 당신', 'transparent', '#E3241B']]
+          .map(([en, ko, d, bg, fg], j) => `<div style="display:flex;align-items:center;gap:14px;border:1px solid ${j === 3 ? '#E3241B' : '#555'};background:${bg};color:${fg};padding:10px 14px;margin-left:${j * 28}px">
+            <span class="mono" style="font-weight:700;font-size:13px;min-width:130px">0${j + 1} ${en}</span><b style="font-size:17px;min-width:70px">${ko}</b><span style="font-size:14px;opacity:.85">${d}</span></div>`).join('<div style="width:2px;height:10px;background:#E3241B;margin-left:' + 60 + 'px"></div>')}</div>`;
+      overlay(`<div class="card"><div class="vert">0${i + 1} / 0${SLIDES.length}</div>
+        ${sl.diagram ? diagram : `<div class="t">${sl.big}</div>`}
+        <div class="k" style="font-size:24px"><span class="xhair"></span>${sl.t}</div><div class="data" style="font-size:15px;color:#bbb">${sl.s}</div>
+        <button class="btn" id="sn" style="margin:28px 0 0 44px">▶ ${i < SLIDES.length - 1 ? 'NEXT' : 'CONTINUE'}</button></div>`, false);
+      history.push(['', sl.t + ' ' + sl.s]);
+      $('sn').onclick = () => { i++; if (i < SLIDES.length) show(); else { closeOverlay(); done(); } };
+    };
+    BG.className = 'bg-plaza'; BG.innerHTML = skyline('plaza', 'PROLOGUE'); $('hudlayer').innerHTML = hudSvg('plaza', 'PROLOGUE');
+    show();
+    window.__skipMini = () => { closeOverlay(); done(); };
+  },
+  /* 문에 귀를 대고 또렷한 지점 찾기 */
+  eavesdrop(m, done) {
+    BOX.classList.add('hide'); let idx = 0, hold = 0, target = null, holding = false, last = 0;
+    overlay(`<div class="ptitle">EAVESDROP // 엿듣기</div><div class="muffle" id="mf">· · ·</div>
+      <div class="door" id="door"><div class="knob"></div><div class="ear" id="ear"></div></div>
+      <div class="meter"><i id="mt"></i></div><p class="help">문을 <b>누른 채</b> 움직여 소리가 또렷해지는 곳을 찾으세요. (${m.lines.length}마디)</p>`);
+    const door = $('door'), mf = $('mf'), mt = $('mt'), ear = $('ear');
+    const newTarget = () => { target = [0.2 + Math.random() * 0.6, 0.15 + Math.random() * 0.7]; hold = 0; };
+    newTarget();
+    const upd = e => {
+      if (!holding) return;
+      const r = door.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+      ear.style.display = 'block'; ear.style.left = x * 100 + '%'; ear.style.top = y * 100 + '%';
+      const d = Math.hypot(x - target[0], y - target[1]); const c = Math.max(0, 1 - d / 0.45);
+      const [who, text] = m.lines[idx];
+      mf.innerHTML = `<span style="font-family:var(--mono);background:var(--rd);color:#0b0b0b;font-size:11px;padding:2px 8px;font-weight:700">${c > 0.6 ? who : 'UNKNOWN'} // SIGNAL ${Math.round(c * 100)}%</span><br>${text}`;
+      mf.style.filter = `blur(${(1 - c) * 9}px)`; mf.style.opacity = 0.3 + c * 0.7;
+      const now = performance.now(); if (c > 0.82) hold += now - last; else hold = Math.max(0, hold - (now - last));
+      last = now; mt.style.width = Math.min(100, hold / 12) + '%';
+      if (hold > 1200) {
+        idx++; holding = false; ear.style.display = 'none';
+        mf.style.filter = 'none'; mf.style.opacity = 1;
+        if (idx >= m.lines.length) { setTimeout(() => { closeOverlay(); playLines(m.lines.map(l => l), done); }, 700); return; }
+        setTimeout(() => { mf.textContent = '· · ·'; mt.style.width = 0; newTarget(); }, 900);
+      }
+    };
+    door.addEventListener('pointerdown', e => { holding = true; last = performance.now(); door.setPointerCapture(e.pointerId); upd(e); });
+    door.addEventListener('pointermove', upd);
+    door.addEventListener('pointerup', () => { holding = false; ear.style.display = 'none'; });
+    window.__skipMini = () => { closeOverlay(); playLines(m.lines, done); };
+  },
+  /* 비서실 수색 — 시간 제한 */
+  search(m, done) {
+    BOX.classList.add('hide'); const T = 30; let left = T, memo = false, drawer = 0, found = false, ended = false;
+    overlay(`<div class="ptitle">SEARCH // 비서실 · 경비 복귀까지 <span id="sec">${T}</span>s</div>
+      <div class="room" id="room">
+        <div class="obj" data-code="OBJ-01" data-o="desk" style="left:30%;top:38%;width:40%;height:22%">책상 서랍</div>
+        <div class="obj" data-code="OBJ-02" data-o="cabinet" style="left:3%;top:6%;width:18%;height:40%">서류장</div>
+        <div class="obj" data-code="OBJ-03" data-o="bin" style="left:78%;top:70%;width:12%;height:18%">휴지통</div>
+        <div class="obj" data-code="OBJ-04" data-o="safe" style="left:78%;top:8%;width:18%;height:30%">금고</div>
+        <div class="obj" data-code="OBJ-05" data-o="window" style="left:3%;top:62%;width:18%;height:30%">창가 화분</div>
+        <div class="msg" id="msg">무엇을 뒤질까?</div>
+      </div><div style="height:50px"></div><div id="kp"></div>
+      <button class="btn" id="leave" disabled>빠져나간다</button><div class="timer" id="tb" style="width:min(780px,94vw)"></div>`);
+    const msg = t => { $('msg').textContent = t; history.push(['', t]); };
+    const finish = () => { if (ended) return; ended = true; clearInterval(iv); closeOverlay(); done(); };
+    const tb = $('tb'); tb.style.transition = `transform ${T}s linear`; requestAnimationFrame(() => requestAnimationFrame(() => tb.style.transform = 'scaleX(0)'));
+    const iv = setInterval(() => {
+      left--; $('sec').textContent = left;
+      if (left === 8) msg('복도 끝에서 발소리가 들린다…');
+      if (left <= 0) {
+        if (!found) { s.doc = 'orig'; s.susp++; note('급하게 서랍을 비틀어 열었다. 흔적이 남았다.'); }
+        else note('아슬아슬하게 빠져나왔다.');
+        finish();
+      }
+    }, 1000);
+    OV.querySelectorAll('.obj').forEach(o => o.onclick = () => {
+      const k = o.dataset.o;
+      if (k === 'cabinet') { msg('회의록뿐이다. 쓸모없다.'); o.classList.add('done'); }
+      if (k === 'window') { msg('흙 속엔 아무것도 없다.'); o.classList.add('done'); }
+      if (k === 'bin') { memo = true; msg('구겨진 메모: "금고 — 위원님 생일 0917 (외우고 버릴 것)"'); o.classList.add('done'); }
+      if (k === 'desk') {
+        drawer++;
+        if (found) return msg('이미 챙겼다.');
+        if (drawer === 1) msg('잠겨 있다. 머리핀을 꺼낸다…');
+        else if (drawer === 2) msg('딸깍. 조금만 더…');
+        else { found = true; s.doc = 'orig'; o.classList.add('done'); msg('찾았다. 「비밀 명령 제7호」.'); note('명령서를 손에 넣었다.'); $('leave').disabled = false; }
+      }
+      if (k === 'safe') {
+        if (s.report) return msg('이미 열었다.');
+        $('kp').innerHTML = `<div class="keypad panel" style="margin:6px auto">금고 비밀번호 <input id="code" maxlength="4" inputmode="numeric"> <button class="btn" id="try">열기</button></div>`;
+        $('code').focus();
+        $('try').onclick = () => {
+          if ($('code').value === '0917') { s.report = true; s.susp++; $('kp').innerHTML = ''; o.classList.add('done'); msg('금고 안: 「복구 가능성 보고서」 — 상단에 「보류」 도장.'); note('낯선 보고서를 찾았다. 시간이 걸렸다.'); }
+          else { $('code').value = ''; msg(memo ? '틀렸다. 메모를 다시 떠올린다.' : '틀렸다. 어딘가에 단서가 있을지도.'); left = Math.max(1, left - 3); $('sec').textContent = left; }
+        };
+      }
+    });
+    $('leave').onclick = finish;
+    window.__skipMini = (opt) => { found = true; s.doc = 'orig'; if (opt === 'safe') { s.report = true; s.susp++; } finish(); };
+  },
+  /* 명령서 살펴보기 — 중요한 줄 짚기 */
+  examine(m, done) {
+    BOX.classList.add('hide');
+    const keys = {
+      k1: ['공급 단계적 제한', '부족한 게 아니었다. 처음부터 줄이고 있었다.'],
+      k2: ['④ 하위구역', '우선순위 맨 아래. 우리는 처음부터 계산에서 빠져 있었다.'],
+      k3: ['① 하위구역', '전력이 모자라면, 우리 불부터 끈다는 뜻이다.'],
+      k4: ['직인', '지도부 다섯 명의 직인. 위조라고 우길 수 없다. 누가 확인만 해준다면.'],
+    };
+    if (s.report) keys.k5 = ['「보류」', '다른 길이 있었다. 그들은 그걸 묻어버렸다.'];
+    const k = id => `<span class="key" data-k="${id}">${keys[id][0]}</span>`;
+    overlay(`<div class="ptitle">DECLASSIFY // 검은 줄을 눌러 내용을 드러내세요</div>
+      <div class="paper"><h4>엘리트 지도부 비밀 명령 제7호</h4>
+        식량 · 에너지 ${k('k1')}.<br>대외 공지: "생산 차질".<br><br>
+        배급 우선순위 — ① 생산 시설 ② 행정 ③ 지도부 ${k('k2')}<br>
+        비상시 전력 차단 순서 — ${k('k3')} → ② …<br><br>
+        지도부 5인 서명 · ${k('k4')}<div class="stamp">극비</div></div>
+      ${s.report ? `<div class="paper" style="margin-top:14px;transform:rotate(1deg)"><h4>복구 가능성 보고서 — 노동자 대표 제출</h4>구형 발전기 수리 시 비축 소모 40% 감소 예상.<br>상단 도장: ${k('k5')}</div>` : ''}
+      <div class="panel" style="margin-top:14px;min-width:min(600px,92vw)"><div id="thought" style="font-style:italic;color:#bbb;min-height:26px">…</div></div>
+      <button class="btn" id="fold" disabled>문서를 접는다 (<span id="cnt">0</span>/${Object.keys(keys).length})</button>`);
+    let n = 0; const need = Object.keys(keys).length;
+    OV.querySelectorAll('.key').forEach(el => el.onclick = () => {
+      $('thought').textContent = keys[el.dataset.k][1];
+      if (!el.classList.contains('found')) { el.classList.add('found'); n++; $('cnt').textContent = n; history.push(['속마음', keys[el.dataset.k][1]]); }
+      if (n >= Math.min(3, need)) $('fold').disabled = false;
+    });
+    $('fold').onclick = () => { closeOverlay(); done(); };
+    window.__skipMini = () => { closeOverlay(); done(); };
+  },
+};
+
+/* ---- 엔딩 ---- */
+function showEnding() {
+  const E = ENDINGS[s.ending];
+  BOX.classList.add('hide'); closeOverlay(); hud(null); $('day').textContent = 'ENDING';
+  const relTxt = Object.keys(ROLE).map(k => `<span class="rel">${ROLE[k]}<b>${REL_WORD[s.rel[k]]}</b></span>`).join('');
+  const ledger = s.ledger.length ? s.ledger.map(t => `· ${t}`).join('<br>') : '· 당신은 아무와도 큰 거래를 하지 않았다.';
+  const fate = s.critical ? '동생은 정전의 밤 이후 깨어나지 못했다.' : (s.saved || s.medicine) ? '동생은 살아남았다.' : '동생은 버텼다. 간신히.';
+  const w = document.createElement('div'); w.className = 'endwrap fade'; w.id = 'endwrap';
+  w.innerHTML = `<div class="end"><div class="mono" style="color:var(--g2);font-size:12px;margin-bottom:10px">FILE.THE-DEAL // OUTCOME // ENDING-0${['RISE','REVOLUTION','PACT','BETRAYAL','FALL'].indexOf(s.ending) + 1}</div><div class="code">${E.code.replace('THE ', 'THE<br>')}</div><div class="sub">${E.sub}</div>
+    <p>${E.text()}</p><p style="color:#a8a39b;font-style:italic">${fate} ${s.debt ? `${ROLE[s.debt]}의 사람 셋은 아직 풀려나지 않았다.` : ''}</p>
+    <p style="color:#a8a39b;font-style:italic">${s.last || ''}</p>
+    <div class="gl"><b>얻은 것</b><span>${E.gain}</span><b>잃은 것</b><span>${E.lose}</span></div>
+    <div class="q">${E.q}</div>
+    <div class="sec">// TRADE LOG — 당신이 한 거래들</div><div class="ledger">${ledger}</div>
+    <div class="sec">// RELATIONS — 마지막 관계</div><div class="rels">${relTxt}</div>
+    <p class="en" style="color:var(--dim)">“모든 선택에는 대가가 따르고, 모든 거래는 관계를 변화시킨다.”</p>
+    <button class="btn" onclick="start()">▶ RESTART</button></div>`;
+  document.body.appendChild(w);
+}
+
+/* ---- 인물 · 세계 파일 ---- */
+const PEOPLE = [
+  ['전달자', 'THE SHADOW', '나', '하위계층의 정보 전달자. 7년 전 성문 앞에서 부모를 잃고, 동생을 업고 하수로로 숨어들었다. 영감에게서 "우편" 일을 물려받아 3년째 네 계급 사이를 오간다.', null],
+  ['동생', 'THE SHADOW', '나의 친동생', '열두 살. 살아남은 유일한 가족. 배급이 줄어든 뒤로 열이 내리지 않는다.', null],
+  ['영감', 'THE SHADOW', '나를 키운 사람', '성벽 아래 하수로를 고치던 늙은 정비공. 피 한 방울 안 섞인 우리 남매를 거뒀다. 하위계층 "우편"의 주인이자 지하 구역의 어른.', 'yeong'],
+  ['위원', 'THE ELITE', '우편의 의뢰인', '엘리트 지도부의 위원. 공급 제한 정책을 설계했다. 냉철하고, 자신의 예측을 믿는다.', 'wiwon'],
+  ['보안대장', 'THE ELITE', '검문소의 눈', '엘리트 구역의 검문과 수색을 맡는다. 명령을 의심하지 않는다.', null],
+  ['과장', 'THE AUTHORITY', '장부를 보는 사람', '배급국 과장. 매일 삭감 도장을 찍지만, 그 이유는 모른다. 원칙주의자.', 'gwan'],
+  ['반장', 'THE SUPPLIERS', '발전소의 대표', '노동자들의 대표. 도시의 불을 쥐고 있다. 실리적이고, 배신을 잊지 않는다.', 'ban'],
+];
+function openFile() {
+  const p = $('logPanel'); if (p.style.display === 'block' && p.dataset.mode === 'file') { p.style.display = 'none'; return; }
+  const met = new Set(history.map(h => h[0]).concat(['전달자', '동생', '영감']));
+  p.dataset.mode = 'file';
+  p.innerHTML = `<div class="ptitle">FILE // 세계 · 인물</div>
+    <p style="font-size:14px;color:#bbb">CITY-07 — 세 번의 전쟁 뒤 남은 성벽 도시. 교역로가 끊겨 성벽 안의 식량과 에너지가 전부다. 배급은 <b style="color:var(--rd)">엘리트 → 중산층 → 노동계층 → 하위계층</b> 순서로 내려온다. 하위계층은 성벽 안에 살지만 명단에 없다.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-top:14px">
+    ${PEOPLE.map(([n, c, r, d, k]) => met.has(n) ? `<div style="border:1px solid #444;padding:12px"><div class="mono" style="font-size:10px;color:var(--g2)">${c}</div><b style="font-size:18px">${n}</b> <span style="background:var(--rd);color:#0b0b0b;font-size:12px;padding:1px 7px;font-weight:700">${r}</span>
+      <p style="font-size:13px;color:#bbb;line-height:1.7;margin:8px 0 0">${d}</p>${k ? `<div class="mono" style="font-size:11px;color:var(--rd);margin-top:6px">RELATION // ${REL_WORD[s.rel[k]]}</div>` : ''}</div>`
+      : `<div style="border:1px dashed #333;padding:12px;color:#555"><div class="mono" style="font-size:10px">${c}</div><b>??? </b><p class="mono" style="font-size:11px">[CLASSIFIED] 아직 만나지 않았다</p></div>`).join('')}</div>
+    <p><button class="btn ghost" onclick="logPanel.style.display='none'">닫기</button></p>`;
+  p.style.display = 'block'; p.scrollTop = 0;
+}
+$('fileBtn').onclick = openFile;
+/* ---- 기록 · 디버그 ---- */
+$('logBtn').onclick = () => { const p = $('logPanel'); if (p.style.display === 'block' && p.dataset.mode === 'log') { p.style.display = 'none'; return; } p.dataset.mode = 'log';
+  p.innerHTML = history.map(([w, t]) => `<div>${w ? `<span class="who">${w}</span>` : ''}${t}</div>`).join('') + '<p><button class="btn ghost" onclick="logPanel.style.display=\'none\'">닫기</button></p>';
+  p.style.display = 'block'; p.scrollTop = 1e9; };
+function dbg() {
+  $('dbg').textContent = JSON.stringify({ 관계: Object.fromEntries(Object.keys(ROLE).map(k => [ROLE[k], s.rel[k]])), 문서: s.doc, 보고서: s.report, 의심도: s.susp, 야망: s.amb,
+    DAY2거래: s.deal, 직인확정: s.confirmed, 거짓말: s.lie, 미끼: s.lure, 공개동맹수: allies(true), 빚: s.debt }, null, 1);
+}
+$('dbgBtn').onclick = () => { const e = $('dbg'); e.style.display = e.style.display === 'block' ? 'none' : 'block'; dbg(); };
+
+function title() {
+  s = fresh(); hud(null); BG.className = 'bg-plaza'; BG.innerHTML = skyline('plaza', 'TITLE'); $('hudlayer').innerHTML = hudSvg('plaza', 'TITLE'); BOX.classList.add('hide'); $('locTag').style.opacity = 0;
+  overlay(`<div class="card"><div class="vert">FILE-07</div><div class="t">THE<br>DEAL</div>
+    <div class="k"><span class="xhair"></span>폐허가 된 도시 · 네 계급 · 5일</div>
+    <div class="data">당신은 하위계층의 정보 전달자. 계급과 계급 사이를 오가며, 말과 비밀을 나른다.<br>CLASS: THE SHADOW // ROLE: COURIER // CLEARANCE: ELITE DISTRICT (UNOFFICIAL)</div>
+    <div class="bar">모든 선택에는 대가가 따르고, 모든 거래는 관계를 변화시킨다.</div><br>
+    <button class="btn" style="margin:28px 0 0 44px" onclick="start()">▶ START</button>
+    <p class="help" style="margin-left:44px">CLICK / SPACE 로 대사를 넘깁니다 · 직접 조작하는 장면과 시간 제한 선택이 있습니다</p></div>`, false);
+}
+function start() {
+  const ew = $('endwrap'); if (ew) ew.remove();
+  s = fresh(); history = []; $('notices').innerHTML = ''; closeOverlay(); run('pro');
+}
+window.__test = { get s() { return s; }, SCENES, judge, start, advance };
+title();
+</script>
+</body>
+</html>
